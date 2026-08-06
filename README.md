@@ -75,7 +75,7 @@ edits it any more.
 
 ### The finding that has no other source
 
-<img src="docs/images/coupling.svg" width="820" alt="Terminal output showing two file pairs that changed together in most of their commits with no import between them: one at 65 percent over 53 commits and one at 64 percent over 38 commits">
+<img src="docs/images/coupling.svg" width="420" alt="Terminal output showing two file pairs that changed together in most of their commits with no import between them: one at 65 percent over 53 commits and one at 64 percent over 38 commits">
 
 `src/flask/cli.py` and `tests/test_cli.py` changed together 53 times. Nothing
 in either file mentions the other. Every tool that reads only source code is
