@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__ · strata</title>
+<style>
+  :root {
+    --bg: #0d1017;
+    --bg-panel: #141922;
+    --bg-raise: #1b212c;
+    --line: #242c39;
+    --line-soft: #1c232e;
+    --ink: #e6ebf2;
+    --ink-dim: #97a3b6;
+    --ink-faint: #616d80;
+    --accent: #f6a13c;
+    --accent-soft: rgba(246, 161, 60, 0.14);
+    --high: #ff6b4a;
+    --med: #f6a13c;
+    --low: #6ba4d8;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  }
+  html[data-theme="light"] {
+    --bg: #f7f8fa;
+    --bg-panel: #ffffff;
+    --bg-raise: #f0f2f6;
+    --line: #dfe3ea;
+    --line-soft: #eaedf2;
+    --ink: #14181f;
+    --ink-dim: #55606f;
+    --ink-faint: #8b95a5;
+    --accent: #b26a00;
+    --accent-soft: rgba(178, 106, 0, 0.10);
+    --high: #cc3d1a;
+    --med: #a56a08;
+    --low: #2f6ea8;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    flex-wrap: wrap;
+    padding: 18px 24px 14px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-panel);
+  }
+  .brand {
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .brand b { font-weight: 600; }
+  h1 { font-size: 17px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  h1 span { color: var(--ink-faint); font-weight: 400; font-size: 13px; }
+  .facts {
+    margin-left: auto;
+    display: flex;
+    gap: 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+  .facts b { color: var(--ink); font-weight: 600; }
+  .theme-toggle {
+    background: none; border: 1px solid var(--line); color: var(--ink-dim);
+    border-radius: 5px; padding: 3px 9px; cursor: pointer; font-size: 12px;
+    font-family: var(--mono);
+  }
+  .theme-toggle:hover { color: var(--ink); border-color: var(--ink-faint); }
+
+  main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 430px;
+    height: calc(100vh - 59px);
+  }
+  @media (max-width: 1080px) {
+    main { grid-template-columns: 1fr; height: auto; }
+    #stage { height: 70vh; }
+    #panel { border-left: 0; border-top: 1px solid var(--line); }
+  }
+
+  /* ---- map ---- */
+  #stage {
+    position: relative;
+    background:
+      radial-gradient(circle at 50% 42%, rgba(255,255,255,0.035), transparent 62%),
+      var(--bg);
+    overflow: hidden;
+  }
+  #canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+
+  .controls {
+    position: absolute; top: 14px; left: 16px; right: 16px;
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    pointer-events: none;
+  }
+  .controls > * { pointer-events: auto; }
+  .views { display: flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--bg-panel); }
+  .views button {
+    background: none; border: 0; color: var(--ink-dim); padding: 6px 13px;
+    font-size: 12px; font-family: var(--sans); cursor: pointer;
+    border-right: 1px solid var(--line-soft);
+  }
+  .views button:last-child { border-right: 0; }
+  .views button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .views button:hover:not([aria-pressed="true"]) { color: var(--ink); }
+
+  #search {
+    background: var(--bg-panel); border: 1px solid var(--line); border-radius: 7px;
+    color: var(--ink); padding: 6px 11px; font-size: 12px; width: 200px;
+    font-family: var(--mono);
+  }
+  #search::placeholder { color: var(--ink-faint); }
+  #search:focus { outline: none; border-color: var(--accent); }
+
+  #crumb {
+    position: absolute; bottom: 14px; left: 16px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-faint);
+    background: var(--bg-panel); border: 1px solid var(--line);
+    padding: 5px 11px; border-radius: 6px; max-width: 62%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #crumb b { color: var(--ink-dim); font-weight: 500; }
+
+  #legend {
+    position: absolute; bottom: 14px; right: 16px;
+    background: var(--bg-panel); border: 1px solid var(--line);
+    border-radius: 6px; padding: 8px 11px; font-size: 11px; color: var(--ink-faint);
+    font-family: var(--mono);
+  }
+  #legend .ramp { display: flex; height: 7px; width: 150px; border-radius: 3px; overflow: hidden; margin: 5px 0 3px; }
+  #legend .ramp i { flex: 1; }
+  #legend .ends { display: flex; justify-content: space-between; }
+  #legend .swatches { display: grid; grid-template-columns: auto auto; gap: 2px 10px; margin-top: 4px; }
+  #legend .swatches span { display: flex; align-items: center; gap: 6px; }
+  #legend .swatches i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+  #tip {
+    position: absolute; pointer-events: none; z-index: 10;
+    background: var(--bg-raise); border: 1px solid var(--line);
+    border-radius: 7px; padding: 9px 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+    max-width: 330px; opacity: 0; transition: opacity 90ms;
+  }
+  #tip.on { opacity: 1; }
+  #tip .p { font-family: var(--mono); font-size: 11.5px; color: var(--ink); word-break: break-all; margin-bottom: 5px; }
+  #tip dl { display: grid; grid-template-columns: auto auto; gap: 1px 14px; margin: 0; font-family: var(--mono); font-size: 11px; }
+  #tip dt { color: var(--ink-faint); }
+  #tip dd { margin: 0; color: var(--ink-dim); text-align: right; }
+
+  /* ---- panel ---- */
+  #panel {
+    border-left: 1px solid var(--line);
+    background: var(--bg-panel);
+    overflow-y: auto;
+    padding: 0 0 30px;
+  }
+  #panel::-webkit-scrollbar { width: 9px; }
+  #panel::-webkit-scrollbar-thumb { background: var(--line); border-radius: 5px; }
+
+  section { border-bottom: 1px solid var(--line-soft); padding: 16px 20px; }
+  section > h2 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--ink-faint); margin: 0 0 12px; font-weight: 600;
+  }
+  section > h2 em { font-style: normal; opacity: 0.72; letter-spacing: 0.04em; text-transform: none; }
+
+  .finding { display: flex; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line-soft); }
+  .finding:first-child { border-top: 0; padding-top: 0; }
+  .sev { flex: none; width: 3px; border-radius: 2px; margin: 3px 0; }
+  .sev.high { background: var(--high); }
+  .sev.medium { background: var(--med); }
+  .sev.low { background: var(--low); }
+  .finding h3 { margin: 0 0 3px; font-size: 13px; font-weight: 600; }
+  .finding p { margin: 0; font-size: 12.5px; color: var(--ink-dim); }
+  .finding ul { margin: 6px 0 0; padding-left: 0; list-style: none; }
+  .finding li {
+    font-family: var(--mono); font-size: 11px; color: var(--ink-faint);
+    padding: 1px 0; word-break: break-all;
+  }
+  .finding li[data-goto] { cursor: pointer; }
+  .finding li[data-goto]:hover { color: var(--accent); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    text-align: left; font-weight: 500; color: var(--ink-faint); font-size: 11px;
+    padding: 0 8px 6px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  th.n, td.n { text-align: right; padding-right: 0; }
+  td { padding: 4px 8px 4px 0; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  tbody tr[data-goto] { cursor: pointer; }
+  tbody tr:hover td { background: var(--accent-soft); }
+  td.path { font-family: var(--mono); font-size: 11px; word-break: break-all; color: var(--ink-faint); }
+  td.path b { color: var(--ink); font-weight: 500; }
+  td.n { font-family: var(--mono); color: var(--ink-dim); white-space: nowrap; }
+
+  .bar { display: inline-block; height: 5px; border-radius: 3px; vertical-align: middle; min-width: 3px; }
+  .muted { color: var(--ink-faint); }
+  .pill {
+    display: inline-block; font-family: var(--mono); font-size: 10px;
+    padding: 0 5px; border-radius: 3px; border: 1px solid var(--line);
+    color: var(--ink-faint); margin-left: 5px;
+  }
+  .pill.hidden-link { color: var(--high); border-color: rgba(255,107,74,0.4); }
+
+  #detail { display: none; }
+  #detail.on { display: block; }
+  #detail .head { font-family: var(--mono); font-size: 12px; word-break: break-all; margin-bottom: 10px; }
+  #detail dl { display: grid; grid-template-columns: 1fr auto; gap: 3px 16px; margin: 0; font-size: 12px; }
+  #detail dt { color: var(--ink-faint); }
+  #detail dd { margin: 0; font-family: var(--mono); color: var(--ink-dim); text-align: right; }
+  #detail .close {
+    float: right; background: none; border: 0; color: var(--ink-faint);
+    cursor: pointer; font-size: 17px; line-height: 1; padding: 0 2px;
+  }
+  #detail .close:hover { color: var(--ink); }
+  .deps { margin-top: 12px; font-size: 11px; font-family: var(--mono); color: var(--ink-faint); }
+  .deps span[data-goto] { display: block; padding: 1px 0; cursor: pointer; word-break: break-all; }
+  .deps span[data-goto]:hover { color: var(--accent); }
+
+  footer {
+    padding: 14px 20px; font-size: 11px; color: var(--ink-faint);
+    font-family: var(--mono); line-height: 1.8;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+  .empty { color: var(--ink-faint); font-size: 12px; font-style: italic; margin: 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><b>strata</b></div>
+  <h1 id="title"></h1>
+  <div class="facts" id="facts"></div>
+  <button class="theme-toggle" id="theme">light</button>
+</header>
+
+<main>
+  <div id="stage">
+    <div class="controls">
+      <div class="views" role="group" aria-label="Map colouring">
+        <button data-view="heat" aria-pressed="true">Heat</button>
+        <button data-view="age" aria-pressed="false">Age</button>
+        <button data-view="knowledge" aria-pressed="false">Knowledge</button>
+        <button data-view="coupling" aria-pressed="false">Coupling</button>
+      </div>
+      <input id="search" type="search" placeholder="filter paths…" spellcheck="false" autocomplete="off">
+    </div>
+    <canvas id="canvas"></canvas>
+    <div id="crumb"></div>
+    <div id="legend"></div>
+    <div id="tip"></div>
+  </div>
+
+  <div id="panel">
+    <section id="detail">
+      <button class="close" id="detail-close" aria-label="Close">×</button>
+      <h2>File</h2>
+      <div class="head" id="detail-path"></div>
+      <dl id="detail-stats"></dl>
+      <div class="deps" id="detail-deps"></div>
+    </section>
+
+    <section id="findings-section">
+      <h2>The dig report</h2>
+      <div id="findings"></div>
+    </section>
+
+    <section id="hotspots-section">
+      <h2>Hotspots <em id="hot-note"></em></h2>
+      <table><thead><tr>
+        <th>File</th><th class="n">Heat</th><th class="n">Lines</th><th class="n">Edits</th>
+      </tr></thead><tbody id="hotspots"></tbody></table>
+    </section>
+
+    <section id="coupling-section">
+      <h2>Change coupling</h2>
+      <table><thead><tr>
+        <th>Pair</th><th class="n">Together</th>
+      </tr></thead><tbody id="coupling"></tbody></table>
+    </section>
+
+    <section id="cycles-section">
+      <h2>Import cycles</h2>
+      <div id="cycles"></div>
+    </section>
+
+    <section id="fossils-section">
+      <h2>Fossils <em>— idle, and imported by nothing</em></h2>
+      <table><thead><tr>
+        <th>File</th><th class="n">Idle</th><th class="n">Lines</th>
+      </tr></thead><tbody id="fossils"></tbody></table>
+    </section>
+
+    <section id="authors-section">
+      <h2>Knowledge</h2>
+      <table><thead><tr>
+        <th>Author</th><th class="n">Commits</th><th class="n">Files owned</th>
+      </tr></thead><tbody id="authors"></tbody></table>
+    </section>
+
+    <section id="lang-section">
+      <h2>Composition</h2>
+      <table><thead><tr>
+        <th>Language</th><th class="n">Files</th><th class="n">Lines</th>
+      </tr></thead><tbody id="languages"></tbody></table>
+    </section>
+
+    <footer id="footer"></footer>
+  </div>
+</main>
+
+<script>
+const DATA = __STRATA_PAYLOAD__;
+
+/* ---------- colour ---------- */
+// A magma-like ramp whose cold end sits just above the page background, so a
+// quiet file recedes and a hot one is the only thing you see.
+const HEAT_STOPS = [
+  [0.00, [44, 52, 68]],
+  [0.15, [59, 58, 99]],
+  [0.35, [106, 47, 120]],
+  [0.55, [166, 58, 109]],
+  [0.75, [224, 92, 69]],
+  [0.90, [246, 161, 60]],
+  [1.00, [255, 209, 102]],
+];
+const AGE_STOPS = [
+  [0.00, [56, 66, 84]],
+  [0.35, [46, 105, 130]],
+  [0.70, [64, 173, 160]],
+  [1.00, [126, 230, 168]],
+];
+const AUTHOR_COLOURS = [
+  "#f6a13c", "#6ba4d8", "#7ee6a8", "#e8709a", "#b58cf0",
+  "#4fc7c7", "#e0c14a", "#ff8f6b", "#8fa3d9", "#c2d76b",
+];
+
+function ramp(stops, t) {
+  t = Math.max(0, Math.min(1, t));
+  for (let i = 1; i < stops.length; i++) {
+    if (t <= stops[i][0]) {
+      const t0 = stops[i - 1][0], c0 = stops[i - 1][1];
+      const t1 = stops[i][0], c1 = stops[i][1];
+      const f = (t - t0) / (t1 - t0 || 1);
+      return "rgb(" + Math.round(c0[0] + (c1[0] - c0[0]) * f) + "," +
+                      Math.round(c0[1] + (c1[1] - c0[1]) * f) + "," +
+                      Math.round(c0[2] + (c1[2] - c0[2]) * f) + ")";
+    }
+  }
+  const last = stops[stops.length - 1][1];
+  return "rgb(" + last[0] + "," + last[1] + "," + last[2] + ")";
+}
+
+/* ---------- state ---------- */
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const tip = document.getElementById("tip");
+const crumb = document.getElementById("crumb");
+
+const files = DATA.files;
+const nodes = DATA.nodes.map(n => ({ path: n[0], kind: n[1], depth: n[2], x: n[3], y: n[4], r: n[5] }));
+const leaves = nodes.filter(n => n.kind === "file");
+const dirs = nodes.filter(n => n.kind === "dir");
+const labelOrder = dirs.slice().sort((a, b) => b.r - a.r);
+const byPath = new Map(nodes.map(n => [n.path, n]));
+
+const authorIndex = new Map(DATA.authors.map((a, i) => [a.name, i]));
+const maxIdle = Math.max(1, ...leaves.map(n => (files[n.path] || {}).idle || 0));
+
+const coupledPaths = new Set();
+DATA.coupling.forEach(p => { coupledPaths.add(p.left); coupledPaths.add(p.right); });
+
+let view = "heat";
+let focus = null;
+let hover = null;
+let selected = null;
+let filter = "";
+let camera = { x: 0, y: 0, k: 1 };
+let target = { x: 0, y: 0, k: 1 };
+let stageSize = 1;
+
+/* ---------- layout ---------- */
+function resize() {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.round(rect.width * dpr));
+  canvas.height = Math.max(1, Math.round(rect.height * dpr));
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  stageSize = Math.min(rect.width, rect.height);
+  target = frameFor(focus);
+  camera = Object.assign({}, target);
+  draw();
+}
+
+function frameFor(path) {
+  const node = path ? byPath.get(path) : null;
+  const pad = 0.93;
+  if (!node) {
+    const extent = DATA.meta.extent;
+    return { x: extent / 2, y: extent / 2, k: (stageSize * pad) / extent };
+  }
+  return { x: node.x, y: node.y, k: (stageSize * pad) / (node.r * 2) };
+}
+
+function project(node) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (node.x - camera.x) * camera.k + rect.width / 2,
+    y: (node.y - camera.y) * camera.k + rect.height / 2,
+    r: node.r * camera.k,
+  };
+}
+
+/* ---------- drawing ---------- */
+function colourFor(node) {
+  const f = files[node.path];
+  if (!f) return "rgba(255,255,255,0.05)";
+  if (view === "age") {
+    if (!DATA.meta.has_history) return "rgba(255,255,255,0.06)";
+    return ramp(AGE_STOPS, 1 - Math.min(1, (f.idle || 0) / maxIdle));
+  }
+  if (view === "knowledge") {
+    const i = authorIndex.get(f.owner);
+    return i === undefined ? "rgba(255,255,255,0.06)" : AUTHOR_COLOURS[i % AUTHOR_COLOURS.length];
+  }
+  if (view === "coupling") {
+    return coupledPaths.has(node.path) ? ramp(HEAT_STOPS, 0.82) : "rgba(255,255,255,0.05)";
+  }
+  return ramp(HEAT_STOPS, f.heat || 0);
+}
+
+function matches(path) { return !filter || path.toLowerCase().indexOf(filter) !== -1; }
+
+function draw() {
+  const rect = canvas.getBoundingClientRect();
+  ctx.clearRect(0, 0, rect.width, rect.height);
+
+  ctx.lineWidth = 1;
+  for (const d of dirs) {
+    const p = project(d);
+    if (p.r < 3 || p.x + p.r < 0 || p.x - p.r > rect.width || p.y + p.r < 0 || p.y - p.r > rect.height) continue;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255," + (0.014 * Math.min(3, d.depth)) + ")";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(150,170,200," + (d.depth === 1 ? 0.20 : 0.10) + ")";
+    ctx.stroke();
+  }
+
+  if (view === "coupling") drawArcs(rect);
+
+  for (const leaf of leaves) {
+    const p = project(leaf);
+    if (p.r < 0.4 || p.x + p.r < 0 || p.x - p.r > rect.width || p.y + p.r < 0 || p.y - p.r > rect.height) continue;
+    const on = matches(leaf.path);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, Math.max(0.8, p.r), 0, Math.PI * 2);
+    ctx.globalAlpha = on ? 1 : 0.10;
+    ctx.fillStyle = colourFor(leaf);
+    ctx.fill();
+    if (p.r > 2.5) {
+      ctx.globalAlpha = on ? 0.5 : 0.06;
+      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Directory labels, largest first, skipping any that would collide with one
+  // already placed — a nested folder sitting near the top of its parent would
+  // otherwise print straight through the parent's name.
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const placed = [];
+  for (const d of labelOrder) {
+    const p = project(d);
+    if (p.r < 30) continue;
+    const label = d.path.split("/").pop();
+    const fontSize = Math.min(13, Math.max(9, p.r / 5));
+    ctx.font = "500 " + fontSize + "px ui-monospace, monospace";
+    const w = ctx.measureText(label).width;
+    if (w > p.r * 1.7) continue;
+    const y = p.y - p.r + Math.min(15, p.r / 4);
+    const box = { x0: p.x - w / 2 - 3, x1: p.x + w / 2 + 3, y0: y - fontSize, y1: y + fontSize };
+    if (placed.some(q => box.x0 < q.x1 && box.x1 > q.x0 && box.y0 < q.y1 && box.y1 > q.y0)) continue;
+    placed.push(box);
+    ctx.fillStyle = "rgba(230,235,242,0.38)";
+    ctx.fillText(label, p.x, y);
+  }
+
+  for (const node of [selected, hover]) {
+    if (!node) continue;
+    const p = project(node);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, Math.max(3, p.r) + 2.5, 0, Math.PI * 2);
+    ctx.strokeStyle = node === hover ? "rgba(255,255,255,0.85)" : "#f6a13c";
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+  }
+}
+
+function drawArcs(rect) {
+  ctx.lineWidth = 1;
+  for (const pair of DATA.coupling) {
+    const a = byPath.get(pair.left), b = byPath.get(pair.right);
+    if (!a || !b) continue;
+    if (!matches(pair.left) && !matches(pair.right)) continue;
+    const pa = project(a), pb = project(b);
+    const mx = (pa.x + pb.x) / 2, my = (pa.y + pb.y) / 2;
+    // Bow each arc towards the centre so the bundle reads as a weave.
+    const cx = mx + (rect.width / 2 - mx) * 0.35;
+    const cy = my + (rect.height / 2 - my) * 0.35;
+    ctx.beginPath();
+    ctx.moveTo(pa.x, pa.y);
+    ctx.quadraticCurveTo(cx, cy, pb.x, pb.y);
+    ctx.strokeStyle = pair.hidden
+      ? "rgba(255,107,74," + (0.18 + 0.55 * pair.degree) + ")"
+      : "rgba(107,164,216," + (0.10 + 0.35 * pair.degree) + ")";
+    ctx.stroke();
+  }
+}
+
+/* ---------- animation ---------- */
+function tick() {
+  const ease = 0.18;
+  const dx = target.x - camera.x, dy = target.y - camera.y, dk = target.k - camera.k;
+  if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01 || Math.abs(dk) > 1e-5) {
+    camera.x += dx * ease; camera.y += dy * ease; camera.k += dk * ease;
+    draw();
+  }
+  requestAnimationFrame(tick);
+}
+
+function goTo(path) {
+  focus = path || null;
+  target = frameFor(focus);
+  crumb.innerHTML = focus
+    ? "<b>" + escapeHtml(DATA.meta.name) + "</b> / " + escapeHtml(focus) + " &nbsp;·&nbsp; click empty space to zoom out"
+    : "<b>" + escapeHtml(DATA.meta.name) + "</b> &nbsp;·&nbsp; " + leaves.length + " files · click a folder to zoom in";
+}
+
+/* ---------- hit testing ---------- */
+function pick(mx, my) {
+  let best = null;
+  for (const leaf of leaves) {
+    if (!matches(leaf.path)) continue;
+    const p = project(leaf);
+    if (Math.hypot(mx - p.x, my - p.y) <= Math.max(3, p.r)) {
+      if (!best || p.r < best.r) best = { node: leaf, r: p.r };
+    }
+  }
+  return best ? best.node : null;
+}
+
+function pickDir(mx, my) {
+  let best = null;
+  for (const d of dirs) {
+    const p = project(d);
+    if (Math.hypot(mx - p.x, my - p.y) <= p.r) {
+      if (!best || p.r < best.r) best = { node: d, r: p.r };
+    }
+  }
+  return best ? best.node : null;
+}
+
+/* ---------- interaction ---------- */
+canvas.addEventListener("mousemove", event => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = event.clientX - rect.left, my = event.clientY - rect.top;
+  const found = pick(mx, my);
+  if (found !== hover) { hover = found; draw(); }
+  if (!found) { tip.classList.remove("on"); return; }
+  showTip(found, mx, my, rect);
+});
+canvas.addEventListener("mouseleave", () => { hover = null; tip.classList.remove("on"); draw(); });
+canvas.addEventListener("click", event => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = event.clientX - rect.left, my = event.clientY - rect.top;
+  const leaf = pick(mx, my);
+  if (leaf) { select(leaf.path); return; }
+  const dir = pickDir(mx, my);
+  goTo(dir && dir.path !== focus ? dir.path : null);
+});
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") { goTo(null); deselect(); }
+});
+
+function showTip(node, mx, my, rect) {
+  const f = files[node.path] || {};
+  const known = DATA.meta.has_history;
+  const rows = [
+    ["lines", f.lines],
+    ["nesting", f.nest],
+    ["edits", known ? f.commits : "—"],
+    ["authors", known ? f.authors : "—"],
+    ["last touched", known ? days(f.idle) : "—"],
+    ["imported by", f.fin],
+    ["heat", f.heat === undefined ? "—" : f.heat.toFixed(2)],
+  ];
+  tip.innerHTML = '<div class="p">' + escapeHtml(node.path) + "</div><dl>" +
+    rows.map(r => "<dt>" + r[0] + "</dt><dd>" + (r[1] === undefined ? "—" : r[1]) + "</dd>").join("") + "</dl>";
+  tip.classList.add("on");
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.min(rect.width - w - 8, Math.max(8, mx + 16)) + "px";
+  tip.style.top = Math.min(rect.height - h - 8, Math.max(8, my + 16)) + "px";
+}
+
+/* ---------- detail panel ---------- */
+const detail = document.getElementById("detail");
+document.getElementById("detail-close").onclick = deselect;
+
+function deselect() { selected = null; detail.classList.remove("on"); draw(); }
+
+function select(path) {
+  const node = byPath.get(path);
+  if (!node) return;
+  selected = node;
+  const f = files[path] || {};
+  const known = DATA.meta.has_history;
+  document.getElementById("detail-path").textContent = path;
+  const rows = [
+    ["Language", f.lang],
+    ["Lines", f.lines + " (" + f.code + " code)"],
+    ["Deepest nesting", f.nest],
+    ["Heat", f.heat === undefined ? "—" : f.heat.toFixed(3)],
+    ["Commits", known ? f.commits : "no history"],
+    ["Lines churned", known ? f.churn : "—"],
+    ["Authors", known ? f.authors : "—"],
+    ["Main author", known ? (f.owner || "—") : "—"],
+    ["Last touched", known ? days(f.idle) : "—"],
+    ["First seen", known ? days(f.age) + " ago" : "—"],
+    ["Imported by", f.fin],
+    ["Imports", f.fout],
+  ];
+  document.getElementById("detail-stats").innerHTML = rows
+    .map(r => "<dt>" + r[0] + "</dt><dd>" + escapeHtml(String(r[1] === undefined ? "—" : r[1])) + "</dd>").join("");
+
+  const out = DATA.edges[path] || [];
+  const into = DATA.rdeps[path] || [];
+  let deps = "";
+  if (out.length) deps += '<div class="muted">imports</div>' + out.map(linkRow).join("");
+  if (into.length) deps += '<div class="muted" style="margin-top:9px">imported by</div>' + into.map(linkRow).join("");
+  document.getElementById("detail-deps").innerHTML = deps;
+
+  detail.classList.add("on");
+  document.getElementById("panel").scrollTop = 0;
+  draw();
+}
+
+function linkRow(p) { return '<span data-goto="' + escapeHtml(p) + '">' + escapeHtml(p) + "</span>"; }
+
+document.addEventListener("click", event => {
+  const el = event.target.closest("[data-goto]");
+  if (!el) return;
+  const path = el.getAttribute("data-goto");
+  if (byPath.has(path)) { select(path); goTo(parentOf(path)); }
+});
+
+function parentOf(path) {
+  const i = path.lastIndexOf("/");
+  return i === -1 ? null : path.slice(0, i);
+}
+
+/* ---------- controls ---------- */
+document.querySelectorAll(".views button").forEach(button => {
+  button.onclick = () => {
+    view = button.dataset.view;
+    document.querySelectorAll(".views button").forEach(b =>
+      b.setAttribute("aria-pressed", String(b === button)));
+    renderLegend();
+    draw();
+  };
+});
+
+document.getElementById("search").addEventListener("input", event => {
+  filter = event.target.value.trim().toLowerCase();
+  draw();
+});
+
+const themeButton = document.getElementById("theme");
+themeButton.onclick = () => {
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  themeButton.textContent = next === "dark" ? "light" : "dark";
+  draw();
+};
+
+function renderLegend() {
+  const box = document.getElementById("legend");
+  if (view === "knowledge") {
+    const top = DATA.authors.slice(0, 6);
+    box.innerHTML = "owner" + '<div class="swatches">' + top.map(a =>
+      '<span><i style="background:' + AUTHOR_COLOURS[authorIndex.get(a.name) % AUTHOR_COLOURS.length] + '"></i>' +
+      escapeHtml(short(a.name)) + "</span>").join("") + "</div>";
+    return;
+  }
+  if (view === "coupling") {
+    box.innerHTML = 'co-change<div class="swatches">' +
+      '<span><i style="background:#ff6b4a"></i>no import</span>' +
+      '<span><i style="background:#6ba4d8"></i>imported</span></div>';
+    return;
+  }
+  const stops = view === "age" ? AGE_STOPS : HEAT_STOPS;
+  let cells = "";
+  for (let i = 0; i < 28; i++) cells += '<i style="background:' + ramp(stops, i / 27) + '"></i>';
+  box.innerHTML = (view === "age" ? "last touched" : "complexity × change") +
+    '<div class="ramp">' + cells + '</div><div class="ends"><span>' +
+    (view === "age" ? "old" : "cool") + "</span><span>" + (view === "age" ? "today" : "hot") + "</span></div>";
+}
+
+/* ---------- panel content ---------- */
+function days(value) {
+  if (value === undefined || value === null) return "—";
+  if (value < 1) return "today";
+  if (value < 45) return Math.round(value) + "d";
+  if (value < 730) return Math.round(value / 30.4) + "mo";
+  return (value / 365).toFixed(1) + "y";
+}
+function short(name) { return name.length > 16 ? name.slice(0, 15) + "…" : name; }
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function basename(path) { return path.split("/").pop(); }
+function pathCell(path) {
+  const dir = parentOf(path);
+  return '<td class="path">' + (dir ? escapeHtml(dir) + "/" : "") +
+    "<b>" + escapeHtml(basename(path)) + "</b></td>";
+}
+function hideSection(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = "none";
+}
+
+const known = DATA.meta.has_history;
+
+document.getElementById("hotspots").innerHTML = DATA.hotspots.map(h => {
+  const f = files[h] || {};
+  return '<tr data-goto="' + escapeHtml(h) + '">' + pathCell(h) +
+    '<td class="n"><span class="bar" style="width:' + Math.max(4, (f.heat || 0) * 34) +
+    "px;background:" + ramp(HEAT_STOPS, f.heat || 0) + '"></span></td>' +
+    '<td class="n">' + f.lines + "</td>" +
+    '<td class="n">' + (known ? f.commits : "—") + "</td></tr>";
+}).join("");
+if (!DATA.hotspots.length) hideSection("hotspots-section");
+document.getElementById("hot-note").textContent =
+  known ? "— complexity × recent change" : "— complexity only (no git history)";
+
+if (DATA.coupling.length) {
+  document.getElementById("coupling").innerHTML = DATA.coupling.slice(0, 14).map(p =>
+    '<tr data-goto="' + escapeHtml(p.left) + '"><td class="path"><b>' + escapeHtml(basename(p.left)) +
+    "</b> ↔ <b>" + escapeHtml(basename(p.right)) + "</b>" +
+    (p.hidden ? '<span class="pill hidden-link">no import</span>' : "") +
+    '<div class="muted" style="font-size:10px">' + escapeHtml(parentOf(p.left) || ".") + " · " +
+    escapeHtml(parentOf(p.right) || ".") + "</div></td>" +
+    '<td class="n">' + Math.round(p.degree * 100) + '%<div class="muted" style="font-size:10px">' +
+    p.co + "×</div></td></tr>").join("");
+} else hideSection("coupling-section");
+
+if (DATA.cycles.length) {
+  document.getElementById("cycles").innerHTML = DATA.cycles.slice(0, 8).map(c =>
+    '<div class="finding"><div class="sev medium"></div><div><p style="font-family:var(--mono);font-size:11px">' +
+    c.map(escapeHtml).join(" → ") + "</p></div></div>").join("");
+} else hideSection("cycles-section");
+
+if (DATA.fossils.length) {
+  document.getElementById("fossils").innerHTML = DATA.fossils.map(f => {
+    const rec = files[f] || {};
+    return '<tr data-goto="' + escapeHtml(f) + '">' + pathCell(f) +
+      '<td class="n">' + days(rec.idle) + '</td><td class="n">' + rec.lines + "</td></tr>";
+  }).join("");
+} else hideSection("fossils-section");
+
+if (DATA.authors.length) {
+  document.getElementById("authors").innerHTML = DATA.authors.slice(0, 12).map((a, i) =>
+    '<tr><td><i class="bar" style="width:8px;height:8px;border-radius:50%;background:' +
+    AUTHOR_COLOURS[i % AUTHOR_COLOURS.length] + ';display:inline-block;margin-right:7px"></i>' +
+    escapeHtml(a.name) + '</td><td class="n">' + a.commits + '</td><td class="n">' + a.files_owned +
+    "</td></tr>").join("");
+} else hideSection("authors-section");
+
+document.getElementById("languages").innerHTML = DATA.languages.map(l =>
+  "<tr><td>" + escapeHtml(l.name) + '</td><td class="n">' + l.files + '</td><td class="n">' +
+  l.lines.toLocaleString() + "</td></tr>").join("");
+
+document.getElementById("findings").innerHTML = DATA.findings.length
+  ? DATA.findings.map(f => '<div class="finding"><div class="sev ' + f.severity + '"></div><div><h3>' +
+      escapeHtml(f.title) + "</h3><p>" + escapeHtml(f.detail) + "</p><ul>" +
+      f.paths.slice(0, 5).map(p => {
+        const first = p.split(" ")[0];
+        return "<li" + (byPath.has(first) ? ' data-goto="' + escapeHtml(first) + '"' : "") + ">" +
+          escapeHtml(p) + "</li>";
+      }).join("") + "</ul></div></div>").join("")
+  : '<p class="empty">Nothing stands out. Either this is a tidy repository, or a young one.</p>';
+
+document.getElementById("title").innerHTML =
+  escapeHtml(DATA.meta.name) + " <span>" + escapeHtml(DATA.meta.root) + "</span>";
+document.getElementById("facts").innerHTML = [
+  "<span><b>" + leaves.length + "</b> files</span>",
+  "<span><b>" + DATA.meta.lines.toLocaleString() + "</b> lines</span>",
+  known ? "<span><b>" + DATA.meta.commits.toLocaleString() + "</b> commits</span>" : "",
+  known && DATA.meta.span_days > 40 ? "<span><b>" + Math.round(DATA.meta.span_days / 30.4) + "</b> months</span>" : "",
+].join("");
+document.getElementById("footer").innerHTML =
+  "generated " + new Date(DATA.meta.generated_at * 1000).toISOString().slice(0, 16).replace("T", " ") +
+  ' UTC · <a href="https://github.com/nikhilcherry/strata">strata</a> v' + DATA.meta.version + "<br>" +
+  (known
+    ? "heat = complexity × change, with a " + DATA.meta.half_life + "-day half-life on age"
+    : "no git history here — heat is complexity alone");
+
+/* ---------- go ---------- */
+window.addEventListener("resize", resize);
+renderLegend();
+goTo(null);
+resize();
+tick();
+</script>
+</body>
+</html>

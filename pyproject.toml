@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "strata-cli"
+version = "1.0.0"
+description = "Code archaeology: find where the risk in a repository actually lives."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Nikhil Ammisetty" }]
+keywords = ["code-quality", "git", "hotspots", "static-analysis", "visualization", "technical-debt"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/nikhilcherry/strata"
+Issues = "https://github.com/nikhilcherry/strata/issues"
+
+[project.scripts]
+strata = "strata.cli:entrypoint"
+
+[tool.setuptools]
+packages = ["strata"]
+
+[tool.setuptools.package-data]
+strata = ["assets/*.html"]
