@@ -61,27 +61,53 @@ def _leading_width(line: str) -> Optional[int]:
     return None
 
 
+#: Indentation conventions worth considering, widest first. A "unit" of 1 is
+#: not a convention anybody writes — it is what you infer when the evidence is
+#: noise, and it silently turns columns into levels.
+_UNIT_CANDIDATES = (8, 6, 4, 3, 2)
+#: Share of indented lines a candidate step must land on exactly to be believed.
+_UNIT_COVERAGE = 0.75
+#: A width has to carry at least this share of the indented lines before it is
+#: taken as evidence of the first indent level rather than a wrapped line.
+_WIDTH_SUPPORT = 0.10
+
+
 def detect_indent_unit(widths: List[int]) -> int:
     """Infer one indentation step from the widths actually observed.
 
-    Takes the most common positive gap between consecutive distinct widths,
-    which handles 2-space, 4-space and tab-indented files without configuration.
+    Scores each plausible step by the share of indented lines whose width it
+    divides exactly, and takes the widest step that still explains most of the
+    file.
+
+    Measuring the gaps between distinct widths instead — the obvious approach —
+    is wrecked by continuation lines. A few statements wrapped to align under an
+    open bracket sit at arbitrary columns, contributing gaps of 1 that outvote
+    the real steps and collapse the unit to 1. Every column then reads as a
+    nesting level, which inflates both the reported depth and the complexity
+    score the hotspot ranking is built on.
     """
-    distinct = sorted({w for w in widths if w > 0})
-    if not distinct:
+    indented = [w for w in widths if w > 0]
+    if not indented:
         return TAB_WIDTH
-    gaps: Dict[int, int] = {}
-    previous = 0
-    for width in distinct:
-        gap = width - previous
-        if gap > 0:
-            gaps[gap] = gaps.get(gap, 0) + 1
-        previous = width
-    if not gaps:
-        return TAB_WIDTH
-    # Ties break towards the smaller step, which is the safer under-estimate.
-    best = max(gaps.items(), key=lambda kv: (kv[1], -kv[0]))[0]
-    return max(1, min(best, 8))
+
+    # The shallowest *well-supported* width is the first indent level, so no
+    # step wider than it can be real. Widths carried by a stray wrapped line
+    # do not count, or a single odd continuation would cap everything at 1.
+    counts: Dict[int, int] = {}
+    for width in indented:
+        counts[width] = counts.get(width, 0) + 1
+    floor = min(
+        (w for w, n in counts.items() if n >= max(2, _WIDTH_SUPPORT * len(indented))),
+        default=max(_UNIT_CANDIDATES),
+    )
+
+    for unit in _UNIT_CANDIDATES:
+        if unit > floor:
+            continue
+        covered = sum(n for w, n in counts.items() if w % unit == 0)
+        if covered >= _UNIT_COVERAGE * len(indented):
+            return unit
+    return TAB_WIDTH
 
 
 def _classify(text: str, lang: Optional[Language]) -> Tuple[List[int], int, int, int]:

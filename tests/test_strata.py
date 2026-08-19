@@ -117,6 +117,34 @@ class ComplexityTests(unittest.TestCase):
         self.assertEqual(detect_indent_unit([0, 4, 8, 12]), 4)
         self.assertEqual(detect_indent_unit([0, 2, 4, 6]), 2)
         self.assertEqual(detect_indent_unit([]), 4)
+        self.assertEqual(detect_indent_unit([0, 3, 6, 9]), 3)
+        self.assertEqual(detect_indent_unit([0, 8, 16, 24]), 8)
+
+    def test_continuation_lines_do_not_collapse_the_unit(self):
+        """Wrapped lines sit at arbitrary columns; they are not indent steps.
+
+        Scoring the gaps between distinct widths lets a handful of lines
+        aligned under an open bracket outvote the real 4-space steps, pinning
+        the unit at 1. Every column then reads as a nesting level, which
+        inflates the depth shown to the user *and* the complexity score the
+        hotspot ranking sorts on.
+        """
+        body = [0, 4, 8, 12, 16, 20, 24] * 12          # the real shape
+        wrapped = [9, 14, 15, 17, 19, 21, 23, 40]      # aligned continuations
+        self.assertEqual(detect_indent_unit(body + wrapped), 4)
+
+    def test_deep_two_space_file_is_not_read_as_wider(self):
+        """Most lines sitting deep must not promote the step to 8."""
+        self.assertEqual(detect_indent_unit([2, 4, 6, 8, 8, 16, 16, 24] * 5), 2)
+
+    def test_nesting_depth_stays_plausible(self):
+        """A file of real code cannot be forty levels deep."""
+        source = "\n".join(
+            "    " * (i % 5) + "value = call(argument_one,\n" + " " * 37 + "argument_two)"
+            for i in range(40)
+        )
+        stats = analyse_text(source, language_for("x.py"))
+        self.assertLessEqual(stats.max_indent, 10)
 
     def test_empty_text_is_safe(self):
         self.assertEqual(analyse_text("").lines, 0)
