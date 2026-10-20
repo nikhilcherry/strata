@@ -21,6 +21,10 @@ strata dig ~/code/your-project        # → strata-report.html
 git clone https://github.com/nikhilcherry/strata.git && cd strata && python3 -m strata dig ~/code/your-project
 ```
 
+## 40-second demo
+
+<p align="center"><a href="docs/media/demo.mp4"><img src="docs/media/demo.gif" width="640" alt="Preview of the strata demo video: the brand slam, then the heat map and hidden coupling views"></a><br><sub>▶ Click for the full 40-second video with sound. Every image in it is a real screenshot or run from this repo.</sub></p>
+
 ## What it answers
 
 Every tool that measures a codebase measures it as it is *right now*. A thousand-line file nobody has opened since 2019 is not a problem. A two-hundred-line file four people rewrote last month is. Complexity becomes risk only when multiplied by change, and change is the axis static analysis cannot see.
