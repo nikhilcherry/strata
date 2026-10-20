@@ -100,6 +100,12 @@ Circles are files, sized by line count, nested inside their directories. Click a
 folder to zoom in, click a file for its full record, type in the box to filter,
 press <kbd>Esc</kbd> to reset.
 
+## Who knows what
+
+`strata knowledge` counts commits per author and which files each person effectively owns, then lists the files only one person has ever touched. On Flask, 800-odd commits from one maintainer and a long tail of authors who own nothing is exactly the kind of fact a hiring manager or a new tech lead wants before touching a module.
+
+![strata knowledge on pallets/flask: commits and files owned per author](docs/images/knowledge.png)
+
 ## Commands
 
 ```
