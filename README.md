@@ -102,7 +102,7 @@ press <kbd>Esc</kbd> to reset.
 
 ## Who knows what
 
-`strata knowledge` counts commits per author and which files each person effectively owns, then lists the files only one person has ever touched. On Flask, 800-odd commits from one maintainer and a long tail of authors who own nothing is exactly the kind of fact a hiring manager or a new tech lead wants before touching a module.
+`strata knowledge` counts commits per author and which files each person effectively owns, then lists the files only one person has ever touched. On Flask, two maintainers account for most of the history (977 and 824 commits) while most other authors own no files. That is the kind of fact a new tech lead wants before touching a module.
 
 ![strata knowledge on pallets/flask: commits and files owned per author](docs/images/knowledge.png)
 
